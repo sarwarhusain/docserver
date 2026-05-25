@@ -43,16 +43,49 @@ async function run() {
       const result = await doctorCollection.findOne(query);
       res.json(result);
     });
+
     app.get("/doctors", async (req, res) => {
       const result = await doctorCollection.find().toArray();
       res.json(result);
     });
+
     app.post("/doctors", async (req, res) => {
       const doctorData = req.body;
       const result = await doctorCollection.insertOne(doctorData);
       res.json(result);
     });
+
     //booking
+    app.delete("/bookings/:id", async (req, res) => {
+      const { id } = req.params;
+      const deleteQuery = {
+        _id: new ObjectId(id),
+      };
+      // console.log( deleteQuery);
+      const result = await bookingCollection.deleteOne(deleteQuery);
+      res.json(result);
+    });
+    app.get("/bookings/:id", async (req, res) => {
+      const { id } = req.params;
+      const query = {
+        _id: new ObjectId(id),
+      };
+      const result = await bookingCollection.findOne(query);
+      res.json(result);
+    });
+    app.patch("/bookings/:id", async (req, res) => {
+      const { id } = req.params;
+      const filter = {
+        _id: new ObjectId(id),
+      };
+      const editData = req.body;
+      const query = {
+        $set: editData,
+      };
+      const result = await bookingCollection.updateOne(filter, query);
+      res.json(result);
+    });
+
     app.get("/bookings", async (req, res) => {
       const result = await bookingCollection.find().toArray();
       res.json(result);
