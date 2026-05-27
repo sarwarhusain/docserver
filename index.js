@@ -9,6 +9,7 @@ app.use(cors());
 app.use(express.json());
 
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const { createRemoteJWKSet, jwtVerify } = require("jose-cjs");
 const uri = process.env.MONGODB_URI;
 
 const client = new MongoClient(uri, {
@@ -18,25 +19,46 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   },
 });
-
+// jwks
+const JWKS = createRemoteJWKSet(
+  new URL(`${process.env.CLIENT_URL}/api/auth/jwks`),
+);
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
     //CRUD operation
     const db = client.db("doctorDb");
     const doctorCollection = db.collection("doctors");
     const bookingCollection = db.collection("bookings");
 
+    const verifyToken = async (req, res, next) => {
+      const authHeader = req?.headers?.authorization;
+      // console.log(authHeader);
+      if (!authHeader) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const token = authHeader.split(" ")[1];
+      console.log(token);
+
+      try {
+        const { payload } = await jwtVerify(token, JWKS);
+        console.log(payload);
+        next();
+      } catch (error) {
+        return res.status(404).json({ message: "Forbidden" });
+      }
+    };
+
     //top rated doctor
-    app.get("/top-rated", async (req, res) => {
+    app.get("/top-rated", verifyToken, async (req, res) => {
       const result = await doctorCollection.find().limit(3).toArray();
       res.json(result);
     });
 
     //single doctor by dynamic id
-    app.get("/doctors/:id", async (req, res) => {
-      const id = req.params.id;
+    app.get("/doctors/:id", verifyToken, async (req, res) => {
+      const { id } = req.params;
       const query = {
         _id: new ObjectId(id),
       };
@@ -56,7 +78,7 @@ async function run() {
     });
 
     //booking
-    app.delete("/bookings/:id", async (req, res) => {
+    app.delete("/bookings/:id", verifyToken, async (req, res) => {
       const { id } = req.params;
       const deleteQuery = {
         _id: new ObjectId(id),
@@ -73,7 +95,7 @@ async function run() {
       const result = await bookingCollection.findOne(query);
       res.json(result);
     });
-    app.patch("/bookings/:id", async (req, res) => {
+    app.patch("/bookings/:id", verifyToken, async (req, res) => {
       const { id } = req.params;
       const filter = {
         _id: new ObjectId(id),
@@ -86,18 +108,18 @@ async function run() {
       res.json(result);
     });
 
-    app.get("/bookings", async (req, res) => {
+    app.get("/bookings", verifyToken, async (req, res) => {
       const result = await bookingCollection.find().toArray();
       res.json(result);
     });
 
-    app.post("/bookings", async (req, res) => {
+    app.post("/bookings", verifyToken, async (req, res) => {
       const bookingData = req.body;
       const result = await bookingCollection.insertOne(bookingData);
       res.json(result);
     });
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!",
     );
