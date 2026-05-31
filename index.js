@@ -26,7 +26,7 @@ const JWKS = createRemoteJWKSet(
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    // await client.connect();
+    await client.connect();
     //CRUD operation
     const db = client.db("doctorDb");
     const doctorCollection = db.collection("doctors");
@@ -46,12 +46,12 @@ async function run() {
         console.log(payload);
         next();
       } catch (error) {
-        return res.status(404).json({ message: "Forbidden" });
+        return res.status(401).json({ message: "Forbidden" });
       }
     };
 
     //top rated doctor
-    app.get("/top-rated", verifyToken, async (req, res) => {
+    app.get("/top-rated", async (req, res) => {
       const result = await doctorCollection.find().limit(3).toArray();
       res.json(result);
     });
@@ -113,13 +113,13 @@ async function run() {
       res.json(result);
     });
 
-    app.post("/bookings", verifyToken, async (req, res) => {
+    app.post("/bookings", async (req, res) => {
       const bookingData = req.body;
       const result = await bookingCollection.insertOne(bookingData);
       res.json(result);
     });
     // Send a ping to confirm a successful connection
-    // await client.db("admin").command({ ping: 1 });
+    await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!",
     );
